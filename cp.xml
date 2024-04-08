@@ -1,0 +1,311 @@
+<?xml version="1.0"?>
+<lims-data><lims-data-header><version>6.1.0.0</version><client-version>2003 R2 B3</client-version><records>12</records><exported>2015-12-13 10:59:55</exported></lims-data-header><FILTER xml:space="preserve"><USER_DEFINED>T</USER_DEFINED><FILTER_ID type="primary_key"><NAME/></FILTER_ID><NAME>01 לוח בקרה - דגימות שנשלחו אך לא התקבלו</NAME><DESCRIPTION>SELECT 
+	   COUNT (1) total
+  FROM lims_sys.SAMPLE, lims_sys.SAMPLE_USER
+ WHERE SAMPLE.sample_id = SAMPLE_USER.sample_id
+   AND </DESCRIPTION><WHERE_STATEMENT>	  SAMPLE.status = 'U'
+   AND SAMPLE.created_on &gt; (SYSDATE - 30)
+   AND SAMPLE.received_on IS NULL
+   AND SAMPLE_USER.u_date_original_ship &gt; TRUNC (SYSDATE -7)
+    AND SAMPLE.sdg_id IN   (
+					          SELECT SDG_USER.sdg_id
+					            FROM lims_sys.U_CLINIC cs, lims_sys.U_CLINIC_USER csu,lims_sys.SDG_USER
+					           WHERE cs.u_clinic_id = csu.u_clinic_id
+							   	AND SAMPLE.sdg_id = SDG_USER.sdg_id
+								 AND SDG_USER.U_COLLECTION_STATION=cs.u_clinic_id
+					             AND  SAMPLE_USER.u_date_original_ship &gt; TRUNC (SYSDATE-1)  )
+   AND EXISTS (
+          SELECT 1
+            FROM lims_sys.SDG
+           WHERE SDG.sdg_id = SAMPLE.sdg_id
+             AND SUBSTR (SDG.external_reference, 9, 1) = 'B'
+             AND SDG.status = 'U')</WHERE_STATEMENT><SCHEMA_TABLE_ID type="foreign_key" reference="SCHEMA_TABLE"><DATABASE_NAME>SAMPLE</DATABASE_NAME></SCHEMA_TABLE_ID></FILTER><FILTER xml:space="preserve"><USER_DEFINED>T</USER_DEFINED><FILTER_ID type="primary_key"><NAME/></FILTER_ID><NAME>02 לוח בקרה - דגימות ממתינות למספור</NAME><DESCRIPTION>SELECT COUNT (DECODE (u_priority, 1, 1, NULL)) priority_1,
+       COUNT (DECODE (u_priority, 2, 2, NULL)) priority_2,
+       COUNT (DECODE (u_priority, 3, 3, NULL)) priority_3,
+       COUNT (DECODE (u_priority, 4, 4, NULL)) priority_4,
+	   COUNT (1) total
+  FROM lims_sys.SDG_USER, lims_sys.SAMPLE, lims_sys.SAMPLE_USER
+ WHERE SAMPLE.sample_id = SAMPLE_USER.sample_id
+   AND SAMPLE.sdg_id = SDG_USER.sdg_id
+   AND </DESCRIPTION><WHERE_STATEMENT>SAMPLE.RECEIVED_ON&gt;SYSDATE-7
+AND SAMPLE.status='V'
+AND EXISTS (
+        SELECT 1
+          FROM lims_sys.SDG
+         WHERE SDG.sdg_id = SAMPLE.sdg_id
+           AND SDG.external_reference=SDG.name
+           AND SDG.status = 'V')</WHERE_STATEMENT><SCHEMA_TABLE_ID type="foreign_key" reference="SCHEMA_TABLE"><DATABASE_NAME>SAMPLE</DATABASE_NAME></SCHEMA_TABLE_ID></FILTER><FILTER xml:space="preserve"><USER_DEFINED>T</USER_DEFINED><FILTER_ID type="primary_key"><NAME/></FILTER_ID><NAME>03 לוח בקרה - דגימות ממתינות למאקרו</NAME><DESCRIPTION>SELECT COUNT (DECODE (u_priority, 1, 1, NULL)) priority_1,
+       COUNT (DECODE (u_priority, 2, 2, NULL)) priority_2,
+       COUNT (DECODE (u_priority, 3, 3, NULL)) priority_3,
+       COUNT (DECODE (u_priority, 4, 4, NULL)) priority_4,
+	   COUNT (1) total
+  FROM lims_sys.SDG_USER, lims_sys.SAMPLE, lims_sys.SAMPLE_USER
+ WHERE SAMPLE.sample_id = SAMPLE_USER.sample_id
+   AND SAMPLE.sdg_id = SDG_USER.sdg_id
+   AND</DESCRIPTION><WHERE_STATEMENT>   SAMPLE.status = 'V'
+   AND SUBSTR (SAMPLE.NAME, 1, 1) = 'B'
+   AND NOT EXISTS (
+          SELECT 1
+            FROM lims_sys.ALIQUOT a, lims_sys.ALIQUOT_FORMULATION af
+           WHERE a.sample_id = SAMPLE.sample_id
+             AND a.aliquot_id = af.parent_aliquot_id)
+   AND NOT EXISTS (SELECT 1   FROM lims_sys.SDG d  WHERE d.status IN ('X','R') AND SAMPLE.sdg_id = d.sdg_id) AND SAMPLE.CREATED_ON &gt; SYSDATE - INTERVAL '1' YEAR</WHERE_STATEMENT><SCHEMA_TABLE_ID type="foreign_key" reference="SCHEMA_TABLE"><DATABASE_NAME>SAMPLE</DATABASE_NAME></SCHEMA_TABLE_ID></FILTER><FILTER xml:space="preserve"><USER_DEFINED>T</USER_DEFINED><FILTER_ID type="primary_key"><NAME/></FILTER_ID><NAME>04 לוח בקרה - קסטות ממתינות ליצירת בלוק </NAME><DESCRIPTION>SELECT COUNT (DECODE (u_priority, 1, 1, NULL)) priority_1,
+       COUNT (DECODE (u_priority, 2, 2, NULL)) priority_2,
+       COUNT (DECODE (u_priority, 3, 3, NULL)) priority_3,
+       COUNT (DECODE (u_priority, 4, 4, NULL)) priority_4, 
+	   COUNT (1) total
+  FROM lims_sys.SDG_USER, lims_sys.SAMPLE, lims_sys.SAMPLE_USER,
+  lims_sys.ALIQUOT, lims_sys.ALIQUOT_USER 
+ WHERE SAMPLE.sample_id = SAMPLE_USER.sample_id
+   AND SAMPLE.sdg_id = SDG_USER.sdg_id
+   AND ALIQUOT.sample_id=SAMPLE.sample_id
+   AND ALIQUOT.aliquot_id = ALIQUOT_USER.aliquot_id 
+   AND</DESCRIPTION><WHERE_STATEMENT>aliquot.aliquot_id in( 
+select a.aliquot_id
+from lims_sys.sample s,
+     lims_sys.sample_user su, 
+     lims_sys.aliquot a, 
+     lims_sys.aliquot_user au,
+	  lims_sys.aliquot aChild,
+	 lims_sys.aliquot_formulation af
+where su.sample_id=s.SAMPLE_ID
+and   a.sample_id=s.SAMPLE_ID
+and   a.ALIQUOT_ID=au.ALIQUOT_ID
+and   a.STATUS in ('V','P','C')
+and a.created_on&gt;sysdate -30
+and aChild.CREATED_ON&gt;sysdate-30
+and au.U_ALIQUOT_STATION='2'
+and af.PARENT_ALIQUOT_ID=a.ALIQUOT_ID
+and aChild.aliquot_id=af.CHILD_ALIQUOT_ID
+and substr(aChild.NAME, length(aChild.NAME)-1, 2)='.1'
+and (        (su.U_OVERNIGHT='F' and au.U_OVERNIGHT='F'					 
+					and trunc(aChild.created_on) = trunc(sysdate-1)
+					)
+				or
+				  ( (su.U_OVERNIGHT='T' OR au.U_OVERNIGHT='T')
+				     AND TRUNC(aChild.created_on) = TRUNC(SYSDATE-2)
+				     )
+				OR
+				(TRUNC(aChild.created_on) &lt;= TRUNC(SYSDATE-2) 
+				AND (  au.U_OLD_ALIQUOT_STATION IS NULL
+					   		OR  ( au.U_OLD_ALIQUOT_STATION IS NOT NULL AND INSTR(au.U_OLD_ALIQUOT_STATION, '3', 1)=0	)
+			)
+	)))</WHERE_STATEMENT><SCHEMA_TABLE_ID type="foreign_key" reference="SCHEMA_TABLE"><DATABASE_NAME>ALIQUOT</DATABASE_NAME></SCHEMA_TABLE_ID></FILTER><FILTER xml:space="preserve"><USER_DEFINED>T</USER_DEFINED><FILTER_ID type="primary_key"><NAME/></FILTER_ID><NAME>05 לוח בקרה - בלוקים ממתינים לניקוי</NAME><DESCRIPTION>SELECT COUNT (DECODE (u_priority, 1, 1, NULL)) priority_1,
+       COUNT (DECODE (u_priority, 2, 2, NULL)) priority_2,
+       COUNT (DECODE (u_priority, 3, 3, NULL)) priority_3,
+       COUNT (DECODE (u_priority, 4, 4, NULL)) priority_4, 
+	   COUNT (1) total
+  FROM lims_sys.SDG_USER, lims_sys.SAMPLE, lims_sys.SAMPLE_USER,
+  lims_sys.ALIQUOT, lims_sys.ALIQUOT_USER 
+ WHERE SAMPLE.sample_id = SAMPLE_USER.sample_id
+   AND SAMPLE.sdg_id = SDG_USER.sdg_id
+   AND ALIQUOT.sample_id=SAMPLE.sample_id
+   AND ALIQUOT.aliquot_id = ALIQUOT_USER.aliquot_id 
+   AND</DESCRIPTION><WHERE_STATEMENT>   ALIQUOT.status IN ('V', 'P', 'C')
+   AND SUBSTR (ALIQUOT.NAME, 1, 1) = 'B'
+   AND ALIQUOT_USER.u_aliquot_station = 3
+   AND ALIQUOT_USER.u_color_type IS NULL
+   AND ALIQUOT.created_on&gt;SYSDATE-14
+   AND NOT EXISTS (
+          SELECT 1
+          FROM  lims_sys.ALIQUOT Slide,lims_sys.ALIQUOT_USER Slideu,
+			  lims_sys.ALIQUOT_FORMULATION af
+           WHERE ALIQUOT.aliquot_id = af.PARENT_ALIQUOT_ID
+		   AND slide.aliquot_id = slideu.aliquot_id
+           AND slide.aliquot_id =af.CHILD_ALIQUOT_ID
+           AND SLIDEU.u_aliquot_station IS NOT  NULL)</WHERE_STATEMENT><SCHEMA_TABLE_ID type="foreign_key" reference="SCHEMA_TABLE"><DATABASE_NAME>ALIQUOT</DATABASE_NAME></SCHEMA_TABLE_ID></FILTER><FILTER xml:space="preserve"><USER_DEFINED>T</USER_DEFINED><FILTER_ID type="primary_key"><NAME/></FILTER_ID><NAME>06 לוח בקרה - בלוקים ממתינים לחיתוך ראשון</NAME><DESCRIPTION>SELECT COUNT (DECODE (u_priority, 1, 1, NULL)) priority_1,
+       COUNT (DECODE (u_priority, 2, 2, NULL)) priority_2,
+       COUNT (DECODE (u_priority, 3, 3, NULL)) priority_3,
+       COUNT (DECODE (u_priority, 4, 4, NULL)) priority_4, 
+	   COUNT (1) total
+  FROM lims_sys.SDG_USER, lims_sys.SAMPLE, lims_sys.SAMPLE_USER,
+  lims_sys.ALIQUOT, lims_sys.ALIQUOT_USER 
+ WHERE SAMPLE.sample_id = SAMPLE_USER.sample_id
+   AND SAMPLE.sdg_id = SDG_USER.sdg_id
+   AND ALIQUOT.sample_id=SAMPLE.sample_id
+   AND ALIQUOT.aliquot_id = ALIQUOT_USER.aliquot_id 
+   AND</DESCRIPTION><WHERE_STATEMENT>aliquot.status IN ('V', 'P', 'C')
+   AND SUBSTR (aliquot.NAME, 1, 1) = 'B'
+   AND aliquot_user.u_aliquot_station = 4
+   AND aliquot_user.u_color_type IS NULL
+   and aliquot.Created_on&gt;sysdate-30
+   AND NOT EXISTS (
+          SELECT 1
+            FROM  lims_sys.ALIQUOT Slide,  lims_sys.ALIQUOT_FORMULATION af,
+			 lims_sys.U_EXTRA_REQUEST_DATA_USER rdu 
+           WHERE ALIQUOT.aliquot_id = af.PARENT_ALIQUOT_ID
+             AND slide.aliquot_id =af.CHILD_ALIQUOT_ID
+             AND slide.name = rdu.U_SLIDE_NAME)
+   AND NOT EXISTS (
+          SELECT 1
+          FROM  lims_sys.ALIQUOT Slide,lims_sys.ALIQUOT_USER Slideu,
+			  lims_sys.ALIQUOT_FORMULATION af
+           WHERE ALIQUOT.aliquot_id = af.PARENT_ALIQUOT_ID
+		   AND slide.aliquot_id = slideu.aliquot_id
+           AND slide.aliquot_id =af.CHILD_ALIQUOT_ID
+           AND SLIDEU.u_aliquot_station IS NOT  NULL)			 </WHERE_STATEMENT><SCHEMA_TABLE_ID type="foreign_key" reference="SCHEMA_TABLE"><DATABASE_NAME>ALIQUOT</DATABASE_NAME></SCHEMA_TABLE_ID></FILTER><FILTER xml:space="preserve"><USER_DEFINED>T</USER_DEFINED><FILTER_ID type="primary_key"><NAME/></FILTER_ID><NAME>07 לוח בקרה - סליידים ממתינים לחיתוך</NAME><DESCRIPTION>SELECT COUNT (DECODE (u_priority, 1, 1, NULL)) priority_1,
+       COUNT (DECODE (u_priority, 2, 2, NULL)) priority_2,
+       COUNT (DECODE (u_priority, 3, 3, NULL)) priority_3,
+       COUNT (DECODE (u_priority, 4, 4, NULL)) priority_4, 
+	   COUNT (1) total
+  FROM lims_sys.SDG_USER, lims_sys.SAMPLE, lims_sys.SAMPLE_USER,
+  lims_sys.ALIQUOT, lims_sys.ALIQUOT_USER 
+ WHERE SAMPLE.sample_id = SAMPLE_USER.sample_id
+   AND SAMPLE.sdg_id = SDG_USER.sdg_id
+   AND ALIQUOT.sample_id=SAMPLE.sample_id
+   AND ALIQUOT.aliquot_id = ALIQUOT_USER.aliquot_id 
+   AND</DESCRIPTION><WHERE_STATEMENT> aliquot.aliquot_id IN (SELECT ALIQUOT.aliquot_id
+  FROM
+  lims_sys.ALIQUOT, lims_sys.ALIQUOT_USER , lims_sys.U_EXTRA_REQUEST r, 
+    lims_sys.U_EXTRA_REQUEST_USER ru, 
+       lims_sys.U_EXTRA_REQUEST_DATA rd, 
+       lims_sys.U_EXTRA_REQUEST_DATA_USER rdu 
+ WHERE 
+    ALIQUOT.aliquot_id = ALIQUOT_USER.aliquot_id 
+   AND ALIQUOT.status IN ('V', 'P') 
+   AND ALIQUOT_USER.u_color_type IS NOT NULL 
+   AND Lower(ALIQUOT_USER.u_color_type) &lt;&gt; 'used'
+   AND SUBSTR (ALIQUOT.NAME, 1, 1) = 'B' 
+   AND (ALIQUOT_USER.U_ARCHIVE='F' OR ALIQUOT_USER.U_ARCHIVE IS NULL) 
+   AND r.U_EXTRA_REQUEST_ID=ru.U_EXTRA_REQUEST_ID 
+  AND  rdu.U_EXTRA_REQUEST_DATA_ID=rd.U_EXTRA_REQUEST_DATA_ID 
+  AND   rdu.U_EXTRA_REQUEST_ID=r.U_EXTRA_REQUEST_ID 
+AND (       (   ALIQUOT.NAME = SUBSTR (rd.NAME,   1,  INSTR (rd.NAME,';' )-1) 
+				   AND r.name LIKE 'Color Slide%' 
+				   AND ( ALIQUOT_USER.u_aliquot_station&lt;5 OR ALIQUOT_USER.u_aliquot_station IS NULL)
+			  ) 
+   OR
+	( rdu.u_slide_name = ALIQUOT.NAME 
+	AND r.name LIKE 'Add Slide%' 
+	AND ALIQUOT_USER.u_aliquot_station  IS   NULL)
+	 ) 
+  AND  rdu.U_STATUS IN ('P','V') 
+  AND ru.U_CREATED_ON&gt;SYSDATE-30)</WHERE_STATEMENT><SCHEMA_TABLE_ID type="foreign_key" reference="SCHEMA_TABLE"><DATABASE_NAME>ALIQUOT</DATABASE_NAME></SCHEMA_TABLE_ID></FILTER><FILTER xml:space="preserve"><USER_DEFINED>T</USER_DEFINED><FILTER_ID type="primary_key"><NAME/></FILTER_ID><NAME>08 לוח בקרה - סליידים מחיתוך 1 שממתינים לסגירת מגש</NAME><DESCRIPTION>SELECT COUNT (DECODE (u_priority, 1, 1, NULL)) priority_1,
+       COUNT (DECODE (u_priority, 2, 2, NULL)) priority_2,
+       COUNT (DECODE (u_priority, 3, 3, NULL)) priority_3,
+       COUNT (DECODE (u_priority, 4, 4, NULL)) priority_4, 
+	   COUNT (1) total
+  FROM lims_sys.SDG_USER, lims_sys.SAMPLE, lims_sys.SAMPLE_USER,
+  lims_sys.ALIQUOT, lims_sys.ALIQUOT_USER 
+ WHERE SAMPLE.sample_id = SAMPLE_USER.sample_id
+   AND SAMPLE.sdg_id = SDG_USER.sdg_id
+   AND ALIQUOT.sample_id=SAMPLE.sample_id
+   AND ALIQUOT.aliquot_id = ALIQUOT_USER.aliquot_id 
+   AND</DESCRIPTION><WHERE_STATEMENT>ALIQUOT.status IN ('V', 'P', 'C')   
+   AND ALIQUOT.created_on&gt;SYSDATE-30
+   AND ALIQUOT_USER.u_aliquot_station   IN (5,6)
+   AND ALIQUOT_USER.u_color_type IS NOT NULL 
+   AND SUBSTR (ALIQUOT.NAME, 1, 1) = 'B' 
+   AND ALIQUOT.name NOT LIKE '%V%'
+   AND (ALIQUOT_USER.U_ARCHIVE='F' OR ALIQUOT_USER.U_ARCHIVE IS NULL)
+   AND ALIQUOT_USER.U_COLOR_TYPE NOT IN ('רזרבה','Other')
+   AND LOWER (u_color_type) not IN (
+                               SELECT LOWER (phe.phrase_name)
+                                 FROM lims_sys.PHRASE_ENTRY phe
+                                WHERE phe.phrase_id IN (1283, 1284,1422)) 
+   AND NOT EXISTS ( 
+SELECT 1
+  FROM lims_sys.SAMPLE s,
+       lims_sys.U_EXTRA_REQUEST_DATA rd,
+       lims_sys.U_EXTRA_REQUEST_DATA_USER rdu,
+       lims_sys.U_EXTRA_REQUEST_USER ru
+ WHERE s.sample_id = ALIQUOT.sample_id
+   AND s.sdg_id = ru.u_sdg_id
+     AND ru.U_CREATED_ON&gt;SYSDATE-40
+   AND ru.u_extra_request_id = rdu.u_extra_request_id
+   AND rdu.u_extra_request_data_id = rd.u_extra_request_data_id
+   AND (       (   ALIQUOT.NAME = SUBSTR (rd.NAME,   1,  INSTR (rd.NAME,';' )-1) 
+			        ) 
+   OR
+	 rdu.u_slide_name = ALIQUOT.NAME 
+	 	   )
+	 ) </WHERE_STATEMENT><SCHEMA_TABLE_ID type="foreign_key" reference="SCHEMA_TABLE"><DATABASE_NAME>ALIQUOT</DATABASE_NAME></SCHEMA_TABLE_ID></FILTER><FILTER xml:space="preserve"><USER_DEFINED>T</USER_DEFINED><FILTER_ID type="primary_key"><NAME/></FILTER_ID><NAME>09 לוח בקרה - סליידים מהזמנות נוספות שממתינים לסגירת מגש</NAME><DESCRIPTION>SELECT COUNT (DECODE (u_priority, 1, 1, NULL)) priority_1,
+       COUNT (DECODE (u_priority, 2, 2, NULL)) priority_2,
+       COUNT (DECODE (u_priority, 3, 3, NULL)) priority_3,
+       COUNT (DECODE (u_priority, 4, 4, NULL)) priority_4, 
+	   COUNT (1) total
+  FROM lims_sys.SDG_USER, lims_sys.SAMPLE, lims_sys.SAMPLE_USER,
+  lims_sys.ALIQUOT, lims_sys.ALIQUOT_USER 
+ WHERE SAMPLE.sample_id = SAMPLE_USER.sample_id
+   AND SAMPLE.sdg_id = SDG_USER.sdg_id
+   AND ALIQUOT.sample_id=SAMPLE.sample_id
+   AND ALIQUOT.aliquot_id = ALIQUOT_USER.aliquot_id 
+   AND</DESCRIPTION><WHERE_STATEMENT>ALIQUOT.aliquot_id IN (
+          SELECT ALIQUOT.aliquot_id
+            FROM lims_sys.ALIQUOT,
+                 lims_sys.ALIQUOT_USER,
+                 lims_sys.U_EXTRA_REQUEST r,
+                 lims_sys.U_EXTRA_REQUEST_USER ru,
+                 lims_sys.U_EXTRA_REQUEST_DATA rd,
+                 lims_sys.U_EXTRA_REQUEST_DATA_USER rdu
+           WHERE ALIQUOT.aliquot_id = ALIQUOT_USER.aliquot_id
+             AND ALIQUOT.status IN ('V', 'P', 'C')
+             AND ALIQUOT_USER.u_color_type IS NOT NULL
+             AND ALIQUOT_USER.u_aliquot_station IN (5, 6)
+             AND ALIQUOT_USER.u_color_type NOT IN ('Other%', 'Used', 'רזרבה')
+            AND LOWER (u_color_type) IN (
+                               SELECT LOWER (phe.phrase_name)
+                                 FROM lims_sys.PHRASE_ENTRY phe
+                                WHERE phe.phrase_id IN
+                                                     (1285, 1502, 1504,1286, 1423))
+             AND SUBSTR (ALIQUOT.NAME, 1, 1) = 'B'
+             AND (   ALIQUOT_USER.u_archive = 'F'
+                  OR ALIQUOT_USER.u_archive IS NULL
+                 )
+             AND r.u_extra_request_id = ru.u_extra_request_id
+             AND rdu.u_extra_request_data_id = rd.u_extra_request_data_id
+             AND rdu.u_extra_request_id = r.u_extra_request_id
+             AND (   (    ALIQUOT.NAME =
+                                  SUBSTR (rd.NAME, 1, INSTR (rd.NAME, ';') - 1)
+                      AND r.NAME LIKE 'Color Slide%'
+                     )
+                  OR (    rdu.u_slide_name = ALIQUOT.NAME
+                      AND r.NAME LIKE 'Add Slide%'
+                     )
+                 )
+             AND rdu.u_status IN ('P', 'V','L')
+             AND ru.u_created_on &gt; SYSDATE - 30)</WHERE_STATEMENT><SCHEMA_TABLE_ID type="foreign_key" reference="SCHEMA_TABLE"><DATABASE_NAME>ALIQUOT</DATABASE_NAME></SCHEMA_TABLE_ID></FILTER><FILTER xml:space="preserve"><USER_DEFINED>T</USER_DEFINED><FILTER_ID type="primary_key"><NAME/></FILTER_ID><NAME>10 לוח בקרה - מגשים שלא שויכו לפתולוג</NAME><DESCRIPTION>SELECT COUNT (DECODE (u_priority, 1, 1, NULL)) priority_1,
+       COUNT (DECODE (u_priority, 2, 2, NULL)) priority_2,
+       COUNT (DECODE (u_priority, 3, 3, NULL)) priority_3,
+       COUNT (DECODE (u_priority, 4, 4, NULL)) priority_4, 
+	   COUNT (1) total
+  FROM lims_sys.U_TRAY, lims_sys.U_TRAY_USER
+ WHERE  U_TRAY.U_TRAY_id = U_TRAY_USER.U_TRAY_id
+   AND</DESCRIPTION><WHERE_STATEMENT>(U_TRAY_USER.u_patholog IS NULL OR u_tray_user.u_patholog = '' ) and U_TRAY_USER.u_assigned_patholog IS NULL
+AND (  U_TRAY_USER.U_SELECTED_SLIDES_NBR IS NOT NULL
+   and U_TRAY_USER.U_SELECTED_SLIDES_NBR &gt;'0')
+and U_TRAY_USER.u_closed_on&gt;sysdate-90 
+ </WHERE_STATEMENT><SCHEMA_TABLE_ID type="foreign_key" reference="SCHEMA_TABLE"><DATABASE_NAME>U_TRAY</DATABASE_NAME></SCHEMA_TABLE_ID></FILTER><FILTER xml:space="preserve"><USER_DEFINED>T</USER_DEFINED><FILTER_ID type="primary_key"><NAME/></FILTER_ID><NAME>11 לוח בקרה - דרישות על מגשים שלא שויכו לפתולוג</NAME><DESCRIPTION>SELECT COUNT (DECODE (u_priority, 1, 1, NULL)) priority_1,
+       COUNT (DECODE (u_priority, 2, 2, NULL)) priority_2,
+       COUNT (DECODE (u_priority, 3, 3, NULL)) priority_3,
+       COUNT (DECODE (u_priority, 4, 4, NULL)) priority_4, 
+	   COUNT (1) total
+  FROM lims_sys.SDG_USER, lims_sys.SDG
+ WHERE  SDG.sdg_id = SDG_USER.sdg_id
+   AND</DESCRIPTION><WHERE_STATEMENT>SDG.sdg_id IN (SELECT d.sdg_id
+  FROM lims_sys.SDG d, 
+  lims_sys.SAMPLE s,
+       lims_sys.ALIQUOT a,
+       lims_sys.U_TRAY_USER,
+       lims_sys.U_TRAY_ENTRY_USER tray_entry
+ WHERE  (U_TRAY_USER.u_patholog IS NULL OR u_tray_user.u_patholog = '' )
+   AND (    U_TRAY_USER.u_selected_slides_nbr IS NOT NULL 
+        AND U_TRAY_USER.u_selected_slides_nbr &gt; '0'
+       )
+   AND tray_entry.u_tray_id = U_TRAY_USER.u_tray_id
+   AND tray_entry.u_slide_id = a.aliquot_id
+   AND a.sample_id = s.sample_id
+   AND s.SDG_ID = d.sdg_id
+   AND SUBSTR (d.external_reference, 9, 1) = 'B'
+             AND d.status &lt;&gt; 'A' )
+   AND created_on &gt; SYSDATE - INTERVAL '2' MONTH</WHERE_STATEMENT><SCHEMA_TABLE_ID type="foreign_key" reference="SCHEMA_TABLE"><DATABASE_NAME>SDG</DATABASE_NAME></SCHEMA_TABLE_ID></FILTER><FILTER xml:space="preserve"><USER_DEFINED>T</USER_DEFINED><FILTER_ID type="primary_key"><NAME/></FILTER_ID><NAME>12  לוח בקרה - דרישות שממתינות לחתימה</NAME><DESCRIPTION>SELECT COUNT (DECODE (u_priority, 1, 1, NULL)) priority_1,
+       COUNT (DECODE (u_priority, 2, 2, NULL)) priority_2,
+       COUNT (DECODE (u_priority, 3, 3, NULL)) priority_3,
+       COUNT (DECODE (u_priority, 4, 4, NULL)) priority_4, 
+	   COUNT (1) total
+  FROM lims_sys.SDG_USER, lims_sys.SDG
+ WHERE  SDG.sdg_id = SDG_USER.sdg_id
+   AND</DESCRIPTION><WHERE_STATEMENT>SDG.status IN ('C')
+   AND SDG_USER.u_patholog IS NOT NULL
+   AND SUBSTR (SDG.NAME, 1, 1) = 'B'
+   AND SDG.CREATED_ON &gt; SYSDATE - INTERVAL '1' YEAR and rownum &lt; 10000</WHERE_STATEMENT><SCHEMA_TABLE_ID type="foreign_key" reference="SCHEMA_TABLE"><DATABASE_NAME>SDG</DATABASE_NAME></SCHEMA_TABLE_ID></FILTER></lims-data>
